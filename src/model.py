@@ -73,9 +73,14 @@ def classify_fit(text: str) -> dict:
         return _mock_classify(clean)
     try:
         sys = ("You are the Intake agent of an investor screening system. "
-               "Extract company name, the funding ask, sector, and a fit rating "
-               "(high/medium/low) with a confidence in [0,1]. Respond JSON.")
-        return _gem_json(f"Pitch email:\n{clean}", sys)
+               "Extract company name, the funding ask, sector, a fit rating "
+               "(high/medium/low) with confidence in [0,1], and a list of candidate "
+               "signal tags (e.g. 'technical moat','strong gtm','team pedigree',"
+               "'regulatory risk','capital efficiency'). Respond JSON with keys: "
+               "company, ask, sector, fit, confidence, signals (array).")
+        out = _gem_json(f"Pitch email:\n{clean}", sys)
+        out.setdefault("signals", [])
+        return out
     except Exception:
         return _mock_classify(clean)
 
@@ -102,12 +107,26 @@ def _mock_classify(text: str) -> dict:
     if "seed" in t or "series" in t:
         score += 1
     fit = "high" if score >= 3 else "medium" if score >= 1 else "low"
+    # Candidate signal extraction (mock heuristic): keyword tags a human/LLM
+    # reviewer would associate with this pitch. These drive signal-aware ranking
+    # and must live in a STABLE vocabulary the investor feedback claims reference
+    # (e.g. "technical moat", "strong gtm", "team pedigree", "regulatory risk",
+    # "capital efficiency").
+    signal_keywords = {
+        "technical moat": ["patent", "proprietary", "model", "algorithm", "moat", "radiology"],
+        "strong gtm": ["go-to-market", "gtm", "traction", "customers", "revenue", "commercial"],
+        "team pedigree": ["ex-", "founded", "phd", "stanford", "mit", "google", "deepmind", "decade", "years"],
+        "regulatory risk": ["fda", "hipaa", "regulated", "compliance", "clinical"],
+        "capital efficiency": ["bootstrapped", "profitable", "lean", "seed"],
+    }
+    signals = [s for s, kws in signal_keywords.items() if any(k in t for k in kws)]
     return {
         "company": company,
         "ask": ask,
         "sector": sector,
         "fit": fit,
         "confidence": round(min(0.99, 0.6 + 0.1 * score), 2),
+        "signals": signals,
     }
 
 
@@ -173,12 +192,46 @@ def _mock_profile(responses: list, deck_signals: dict) -> dict:
 # ----------------------------------------------------------------------------
 # 4. rank_shortlist — RankingAgent (uses Memory Bank)
 # ----------------------------------------------------------------------------
-def rank_shortlist(candidates: list, decisions: list) -> list:
-    """Score candidates, adjusting for past investor decisions (Memory Bank)."""
+def rank_shortlist(candidates: list, decisions: list, investor: str = "default",
+                   evidence=None) -> list:
+    """Score candidates, adjusting for the investor's EVIDENCE graph (not a flat dict).
+
+    Real memory behavior (port of knotty):
+      1. Sector-level: a prior PASS in same sector lowers score; MEET raises it.
+      2. Signal-level: walk the investor's evidence BUNDLE. Each verified feedback
+         claim states the investor valued/rejected a signal; a candidate carrying
+         that signal is boosted/penalized accordingly — and we attach the provenance
+         (claim id + cited source) so the adjustment is auditable.
+    `evidence` is the evidence module (injected to keep this testable offline).
+    """
+    # Build the per-investor evidence bundle (scope wall: only this investor's claims).
+    if evidence is not None:
+        bundle = evidence.compile_bundle(investor)
+        # signal -> signed weight derived from verified feedback claims
+        sig_pref = {}
+        for c in bundle["claims"]:
+            if c["kind"] != "feedback":
+                continue
+            # parse "investor X valued signal 'Y'" / "rejected signal 'Y'"
+            import re as _re
+            m = _re.search(r"(valued|rejected|validated|discounted|neutral on) signal '([^']+)'",
+                          c["text"])
+            if not m:
+                continue
+            verb, sig = m.group(1), m.group(2).lower()
+            w = {"valued": 0.25, "validated": 0.25, "rejected": -0.25,
+                 "discounted": -0.25, "neutral on": 0.0}[verb]
+            sig_pref[sig] = sig_pref.get(sig, 0.0) + w
+            c.setdefault("_provenance", [])
+    else:
+        bundle = None
+        sig_pref = {}
+
     for c in candidates:
         base = {"high": 0.9, "medium": 0.6, "low": 0.3}.get(c.get("fit", "low"), 0.3)
         adj = 0.0
         reasons = []
+        # (1) sector-level memory
         for d in decisions:
             if d.get("sector") == c.get("sector"):
                 if d.get("decision") == "pass":
@@ -187,6 +240,13 @@ def rank_shortlist(candidates: list, decisions: list) -> list:
                 elif d.get("decision") == "meet":
                     adj += 0.1
                     reasons.append(f"prior MEET in {c['sector']}")
+        # (2) signal-level memory — walked from the evidence bundle
+        cands = [str(s).strip().lower() for s in c.get("signals", [])]
+        for s in cands:
+            w = sig_pref.get(s, 0.0)
+            if w:
+                adj += w
+                reasons.append(f"signal '{s}' {('valued' if w>0 else 'rejected')} by investor evidence (bundle)")
         c["score"] = round(min(0.99, max(0.01, base + adj)), 3)
         c["rationale"] = reasons
     candidates.sort(key=lambda x: x["score"], reverse=True)

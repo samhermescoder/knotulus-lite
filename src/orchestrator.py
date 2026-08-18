@@ -10,7 +10,7 @@ import uuid
 
 import model as M
 from trace import Trace
-from memory import load_decisions, seed_sample
+from memory import load_decisions, load_investor, seed_sample
 
 
 def run_pipeline(pitch_text: str, responses: list = None, investor: dict = None):
@@ -24,6 +24,24 @@ def run_pipeline(pitch_text: str, responses: list = None, investor: dict = None)
     cls = M.classify_fit(pitch_text)
     tr.steps[-1]["result"] = cls
 
+    # 1b. Emit the pitch as CITABLE EVIDENCE (knotty-shaped): one source + claims.
+    # This is the intake output becoming part of the walkable graph.
+    import evidence as EV
+    pair = f"pair:{pitch_id}"
+    src = EV.add_source("pitch", "founder", cls.get("company", "Unknown Co"),
+                         content=M.screen_pii(pitch_text), pair_ref=pair, ref=pitch_id)
+    EV.add_claim("fact", "founder", cls.get("company", "Unknown Co"),
+                 text=f"Company: {cls.get('company')}, sector: {cls.get('sector')}",
+                 source_ids=[src], pair_ref=pair, status="verified")
+    if cls.get("ask") and cls["ask"] != "undisclosed":
+        EV.add_claim("ask", "founder", cls.get("company", "Unknown Co"),
+                     text=f"Raising {cls['ask']}", source_ids=[src], pair_ref=pair,
+                     status="verified")
+    for s in cls.get("signals", []):
+        EV.add_claim("fact", "founder", cls.get("company", "Unknown Co"),
+                     text=f"Signal present: {s}", source_ids=[src], pair_ref=pair,
+                     status="verified")
+
     # 2. Assessment
     tr.log("AssessmentAgent", "Draft a short behavioral assessment from deck signals.",
            "draft_assessment(signals)", None)
@@ -36,19 +54,23 @@ def run_pipeline(pitch_text: str, responses: list = None, investor: dict = None)
     profile = M.build_profile(responses or [], cls)
     tr.steps[-1]["result"] = profile
 
-    # 4. Memory read -> Ranking (personalized via prior decisions)
+    # 4. Memory read -> Ranking (personalized via prior decisions + signal weights)
     tr.log("RankingAgent", "Read investor memory, rank with memory-adjusted scores.",
-           "rank_shortlist(candidates, decisions)", None)
+           "rank_shortlist(candidates, decisions, signal_weights)", None)
     decisions = load_decisions()
+    inv = load_investor()
+    signal_weights = inv.get("signal_weights", {})
     candidates = [
         {
             "company": cls.get("company"),
             "sector": cls.get("sector"),
             "fit": cls.get("fit"),
             "confidence": cls.get("confidence"),
+            "signals": cls.get("signals", []),
         }
     ]
-    ranked = M.rank_shortlist(candidates, decisions)
+    ranked = M.rank_shortlist(candidates, decisions, investor=investor.get("name", "default"),
+                                evidence=__import__("evidence"))
     tr.steps[-1]["result"] = ranked
 
     # 5. Brief + trace (Observability)

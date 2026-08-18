@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Knotulus Lite — Decision Portal</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --ink:#e6e9ef; --mut:#9aa3b2; --acc:#6ea8fe; --good:#3fb950; --bad:#f85149; --line:#262b36; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 ui-sans-serif,system-ui,Segoe UI,Roboto; background:var(--bg); color:var(--ink); }
+  header { padding:16px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
+  header h1 { font-size:16px; margin:0; }
+  header .tag { font-size:11px; color:var(--mut); border:1px solid var(--line); padding:2px 8px; border-radius:999px; }
+  .wrap { display:grid; grid-template-columns:1.1fr 1fr; gap:18px; padding:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:0 0 12px; }
+  textarea, input, select { width:100%; background:#0c0e13; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:9px; font:inherit; }
+  textarea { min-height:78px; resize:vertical; }
+  button { background:var(--acc); color:#06121f; border:0; border-radius:8px; padding:9px 14px; font-weight:600; cursor:pointer; margin-top:8px; }
+  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#0c0e13; border:1px solid var(--line); font-size:12px; margin:2px; }
+  .score { font-size:22px; font-weight:700; }
+  .rationale { color:var(--mut); font-size:12px; white-space:pre-wrap; }
+  .claim { padding:8px 10px; border:1px solid var(--line); border-radius:8px; margin:6px 0; background:#0c0e13; }
+  .claim .k { color:var(--acc); font-size:11px; text-transform:uppercase; }
+  .node { fill:#1b2030; stroke:var(--line); }
+  .node.source { fill:#13261c; stroke:#1c3a28; }
+  .node.claim { fill:#1b1f30; stroke:#2a3050; }
+  .edge { stroke:#3a4150; stroke-width:1.2; }
+  .legend span { margin-right:12px; color:var(--mut); font-size:12px; }
+  pre { white-space:pre-wrap; word-break:break-word; background:#0c0e13; border:1px solid var(--line); border-radius:8px; padding:10px; max-height:240px; overflow:auto; }
+  .ok { color:var(--good); } .err { color:var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Knotulus Lite</h1><span class="tag">Decision Portal</span>
+  <span class="tag" id="mode">mode: …</span>
+  <span style="margin-left:auto" class="tag">Fortified Enterprise Fleet</span>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: screening + decisions -->
+  <div>
+    <div class="card">
+      <h2>1 · Screen a pitch</h2>
+      <textarea id="pitch" placeholder="We are building NeuroCo, an AI radiology triage platform. Raising $2M seed."></textarea>
+      <div class="row" style="margin-top:8px">
+        <button onclick="submitPitch()">Run fleet</button>
+        <button class="ghost" onclick="seed()">Seed sample memory</button>
+      </div>
+      <div id="pitchOut" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>2 · Record decision (after screen)</h2>
+      <div class="row">
+        <input id="d_pitch" placeholder="pitch_id" style="flex:2" />
+        <select id="d_dec">
+          <option value="pass">pass</option>
+          <option value="meet">meet</option>
+        </select>
+      </div>
+      <input id="d_signals" placeholder="signals (comma): technical moat, strong gtm" style="margin-top:8px" />
+      <input id="d_note" placeholder="note" style="margin-top:8px" />
+      <button onclick="recordDecision()">Save decision</button>
+      <div id="decOut" style="margin-top:10px" class="rationale"></div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>3 · Post-interview (the "after" loop)</h2>
+      <div class="row">
+        <input id="i_pitch" placeholder="pitch_id" style="flex:2" />
+        <select id="i_out">
+          <option value="good">good</option>
+          <option value="neutral">neutral</option>
+          <option value="bad">bad</option>
+        </select>
+      </div>
+      <input id="i_signals" placeholder="signals that fired (comma)" style="margin-top:8px" />
+      <input id="i_note" placeholder="note" style="margin-top:8px" />
+      <button onclick="recordInterview()">Capture interview</button>
+      <div id="intOut" style="margin-top:10px" class="rationale"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: evidence graph + bundle -->
+  <div>
+    <div class="card">
+      <h2>Evidence graph (walkable)</h2>
+      <div class="legend">
+        <span>● source (artifact)</span><span>● claim (citable fact)</span><span>— cited by</span>
+      </div>
+      <svg id="graph" width="100%" height="320" viewBox="0 0 600 320" style="margin-top:8px"></svg>
+      <div class="row" style="margin-top:6px">
+        <button class="ghost" onclick="loadEvidence()">Refresh graph</button>
+        <button class="ghost" onclick="loadBundle()">Show investor bundle</button>
+      </div>
+      <div id="bundleOut" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Investor memory (file-backed)</h2>
+      <pre id="memOut">—</pre>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "";
+function jget(u){ return fetch(API+u).then(r=>r.json()); }
+function jpost(u,b){ return fetch(API+u,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(b)}).then(r=>r.json()); }
+function setMode(){ jget("/health").then(d=>document.getElementById("mode").textContent="mode: "+d.mode); }
+function sigs(s){ return (s||"").split(",").map(x=>x.trim()).filter(Boolean); }
+
+async function submitPitch(){
+  const text=document.getElementById("pitch").value;
+  const out=document.getElementById("pitchOut");
+  out.innerHTML="running…";
+  const d=await jpost("/pitch",{text});
+  const r=d.ranked?d.ranked[0]:null;
+  out.innerHTML=`<div class="score">${r?r.score:"?"}</div>`+
+    `<div>company: <b>${d.classification?.company}</b> · sector: ${d.classification?.sector} · fit: ${d.classification?.fit}</div>`+
+    `<div>signals: ${(d.classification?.signals||[]).map(s=>'<span class="pill">'+s+'</span>').join("")}</div>`+
+    `<div class="rationale">${r?r.rationale.join("\n"):""}</div>`+
+    `<div style="margin-top:8px"><a class="pill" href="/traces/${d.pitch_id}" target="_blank">trace ${d.pitch_id}</a></div>`+
+    `<div class="rationale" style="margin-top:8px">brief:\n${d.brief?.replace(/\\n/g,"\n")}</div>`;
+  loadEvidence(); loadBundle(); loadMem();
+}
+function seed(){ jpost("/seed",{}).then(()=>{loadEvidence();loadBundle();loadMem();}); }
+
+async function recordDecision(){
+  const b={pitch_id:document.getElementById("d_pitch").value,decision:document.getElementById("d_dec").value,
+    signals:sigs(document.getElementById("d_signals").value),note:document.getElementById("d_note").value};
+  const r=await jpost("/decision",b);
+  document.getElementById("decOut").innerHTML="<span class='ok'>saved</span> — bundle now has "+(r.bundle?.claims?.length||0)+" claims";
+  loadEvidence(); loadBundle(); loadMem();
+}
+async function recordInterview(){
+  const b={pitch_id:document.getElementById("i_pitch").value,outcome:document.getElementById("i_out").value,
+    signals:sigs(document.getElementById("i_signals").value),note:document.getElementById("i_note").value};
+  const r=await jpost("/interview",b);
+  document.getElementById("intOut").innerHTML="<span class='ok'>captured</span> — bundle now has "+(r.bundle?.claims?.length||0)+" claims";
+  loadEvidence(); loadBundle(); loadMem();
+}
+
+async function loadEvidence(){
+  const g=await jget("/evidence");
+  drawGraph(g);
+}
+function drawGraph(g){
+  const svg=document.getElementById("graph"); svg.innerHTML="";
+  const nodes=g.nodes||[], edges=g.edges||[];
+  const pos={}; const W=600,H=320;
+  nodes.forEach((n,i)=>{ pos[n.id]={x:60+(i*97)%480, y:50+Math.floor(i/5)*90}; });
+  const NS="http://www.w3.org/2000/svg";
+  edges.forEach(e=>{
+    const a=pos[e.source],b=pos[e.target]; if(!a||!b)return;
+    const l=document.createElementNS(NS,"line"); l.setAttribute("x1",a.x);l.setAttribute("y1",a.y);l.setAttribute("x2",b.x);l.setAttribute("y2",b.y);
+    l.setAttribute("class","edge"); svg.appendChild(l);
+  });
+  nodes.forEach(n=>{
+    const p=pos[n.id]; const c=document.createElementNS(NS,"circle");
+    c.setAttribute("cx",p.x);c.setAttribute("cy",p.y);c.setAttribute("r",14);c.setAttribute("class","node "+n.type);svg.appendChild(c);
+    const t=document.createElementNS(NS,"text"); t.setAttribute("x",p.x);t.setAttribute("y",p.y+4);t.setAttribute("text-anchor","middle");
+    t.setAttribute("fill","#cdd6e6");t.setAttribute("font-size","9"); t.textContent=(n.kind||n.type).slice(0,4); svg.appendChild(t);
+  });
+  const cap=document.createElementNS(NS,"title"); 
+}
+async function loadBundle(){
+  const b=await jget("/bundle?investor=default");
+  const el=document.getElementById("bundleOut");
+  el.innerHTML=`<div style="color:var(--mut);font-size:12px">${b.claims?.length||0} citable claims</div>`+
+    (b.claims||[]).map(c=>`<div class="claim"><span class="k">${c.kind}</span> ${c.text} <span style="color:var(--mut)">[${c.sources.length} src]</span></div>`).join("");
+}
+async function loadMem(){ const m=await jget("/memory"); document.getElementById("memOut").textContent=JSON.stringify(m.investor,null,2); }
+
+setMode(); loadEvidence(); loadBundle(); loadMem();
+</script>
+</body>
+</html>

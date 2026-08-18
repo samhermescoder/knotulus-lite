@@ -1,0 +1,32 @@
+[project]
+name = "knotulus-lite"
+version = "0.1.0"
+description = "Simplified open Knotulus as a Google ADK + Gemini 3.5 Flash agent fleet — All Things Agentic Hackathon 2026 (Fortified Enterprise Fleet track)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "google-genai",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+# ADK: required by the hackathon ("at least one Google Agent Framework").
+# Install with: uv pip install -e ".[adk]"
+adk = ["google-adk"]
+# Optional Firestore mirror (secondary GCP infra service).
+gcp = ["google-cloud-firestore"]
+# Dev: tests
+dev = ["pytest"]
+
+[project.scripts]
+knotulus-lite-demo = "src.orchestrator:main"
+knotulus-lite-serve = "src.gateway:run"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["src", "src.agents"]

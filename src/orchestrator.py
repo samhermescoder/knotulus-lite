@@ -69,7 +69,7 @@ def run_pipeline(pitch_text: str, responses: list = None, investor: dict = None)
     }
 
 
-if __name__ == "__main__":
+def main():
     seed_sample()
     out = run_pipeline(
         "We are building NeuroCo, an AI platform for radiology triage. "
@@ -82,3 +82,7 @@ if __name__ == "__main__":
     )
     import json
     print(json.dumps(out, indent=2, default=str))
+
+
+if __name__ == "__main__":
+    main()

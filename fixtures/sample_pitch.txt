@@ -1,0 +1,5 @@
+We are building NeuroCo, an AI platform for radiology triage.
+Our model flags the highest-volume scans first and routes them to specialists.
+Raising $2M seed. Previously backed by a top-tier accelerator.
+Founders: Dr. Ada (ex-MIT, radiology) and Sam (ex-Google, ML infra).
+Contact us at founder@neuroco.com or +1 555 0100 to schedule a call.

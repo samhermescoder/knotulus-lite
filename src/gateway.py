@@ -79,3 +79,14 @@ def post_seed():
 @app.get("/health")
 def health():
     return {"status": "ok", "mode": "gemini" if M.USE_GEMINI else "mock"}
+
+
+def run():
+    """Console-script / `python -m src.gateway` entrypoint."""
+    import uvicorn
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+if __name__ == "__main__":
+    run()

@@ -1,19 +1,17 @@
 # Knotulus Lite — HANDOFF.md (where we left off)
 
-> **Updated:** 2026-08-18 by side-projects orchestrator (E-noch)
+> **Updated:** 2026-08-18 (resume + ADK-fix session) by side-projects orchestrator (E-noch)
 > Read this FIRST before working. Update it at the END of every session.
 
 ## Current state
-- Branch: `master` (pushed) | dirty: 0 | last commit: working build (6-agent fleet + tests)
-- Last work: Built the full codebase. Decisions locked: **Fortified Enterprise
-  Fleet track, solo**. Code runs end-to-end in MOCK mode (no credentials).
-- **VERIFIED today:**
-  - venv + deps install OK (`google-genai`, fastapi, uvicorn, pytest)
-  - `pytest tests/` → **4 passed** (classify, e2e pipeline, memory→ranking, registry)
-  - Live `python src/orchestrator.py` prints real classification + memory-adjusted
-    ranking (prior PASS in `ai` dropped NeuroCo 0.9→0.7) + brief + trace file
-  - `registry.json` (Agent Registry) + `memory/` (investor memory layer) + `traces/`
-    (Observability) all working as plain files
+- Branch: `master` (pushed) | last commit: `a56fc6b` (ADK runnable + dual auth + gunicorn)
+- **Fully verified working this session (mock mode, zero creds/billing):**
+  - `pytest tests/` → **6 passed** (4 pipeline + 2 ADK-graph)
+  - Live `python src/orchestrator.py` → full fleet, memory-adjusted ranking + trace
+  - Live gateway `bash run.sh -m src.gateway` → `/health`, `/registry` (6 agents),
+    `/pitch` (full run) all 200 OK. **Agent Gateway primitive confirmed live.**
+  - ADK graph runs via `InMemoryRunner` (offline mock model) — `Built with Google ADK`
+    is now EXERCISED, not just claimed.
 
 ## Hard constraints (do NOT violate)
 - **GCP scope lock:** the ADC login on this machine (enochfyw@gmail.com) and ALL
@@ -21,49 +19,44 @@
   forbade touching any other project with these creds. Always pass `--project knotulus-lite`.
 - **Auth:** Active path = Vertex AI + ADC (real mode). Gemini Developer API key path is
   geo-blocked from HK (FAILED_PRECONDITION) — unusable here; kept only as fallback code.
+- **No billing (user choice, 2026-08-18):** project `knotulus-lite` has NO billing
+  account attached. Therefore Cloud Run deploy + (likely) real Gemini inference are
+  BLOCKED. Decision: stay fully mock-mode + local live demo. Do NOT enable billing
+  or run gcloud deploy without explicit user go-ahead.
 
 ## What is DONE
 - [x] Track analysis + primitive mapping (TRACK-ANALYSIS.md)
 - [x] 6-agent fleet: Intake, Assessment, Profile, Ranking, Brief, Memory
-- [x] Orchestrator (Agent Runtime) + FastAPI gateway (Agent Gateway)
+- [x] Orchestrator (Agent Runtime) + FastAPI gateway (Agent Gateway) — **live-verified**
 - [x] Model Armor (PII strip) + Memory Bank + Observability traces
-- [x] Mock/real backend toggle (`ENABLE_GEMINI` env; ADC, no API key)
-- [x] Dockerfile + Cloud Run deploy.sh + ADK agent entrypoint (src/agents/adk_agents.py)
-- [x] Tests passing
+- [x] Mock/real backend toggle (Vertex+ADC active; API-key fallback, HK-blocked)
+- [x] **Google ADK graph actually runs** (SequentialAgent + InMemoryRunner, offline mock;
+      `tests/test_adk_graph.py` proves it) — fixes prior "claimed not runnable" gap
+- [x] Dockerfile + Cloud Run deploy.sh (deploy BLOCKED by no-billing; code is deploy-ready)
+- [x] gunicorn added to requirements.txt (was missing — would have crashed Cloud Run boot)
+- [x] `src`-on-path bootstrap in gateway.py/adk_agents.py (fixed import bug that broke
+      `-m src.gateway` / uvicorn / Docker invocations)
+- [x] Tests passing (6)
 
-## In flight / next steps (YOU + me)
-- [ ] **YOU:** install gcloud (Windows installer) + `gcloud auth application-default login`
-      (ADC — no API key; the key-creation block you hit is expected org policy)
-- [ ] Flip `ENABLE_GEMINI=true` with project set; re-run tests in real mode
-- [ ] `gcloud builds submit` + `gcloud run deploy` (scales-to-zero) — meets GCP-infra requirement
-- [ ] Optional Firestore mirror (`ENABLE_FIRESTORE=true` in memory.py)
-- [ ] Record demo video: pitch → ranked brief + trace; memory changes a future rank
-- [ ] Write-up before **Sep 1 2026 08:00 GMT+8**
+## Blocker (no-billing)
+- Cloud Run deploy requires a billing account on `knotulus-lite`. User chose free path,
+  so submission will show: local live demo + deploy-ready code (Cloud Run scales-to-zero).
+  If a judge strictly requires a live URL, revisit billing decision.
 
-## Run commands (venv python — avoid Hermes PYTHONPATH leak)
+## Remaining hackathon tasks (no creds needed)
+- [ ] Record demo video: `POST /pitch` NeuroCo → ranked brief + trace; memory seed drops a
+      future ai rank (run `bash run.sh scripts/showcase.py` or the gateway live)
+- [ ] Write-up before **Sep 1 2026 08:00 GMT+8** (features, tech, findings)
+- [ ] README/architecture diagram (TRACK-ANALYSIS.md mapping already covers primitives)
+- [ ] Optional Firestore mirror (would also need billing → skip under no-billing)
+
+## Run commands (venv python — avoids Hermes PYTHONPATH leak)
 - tests:        `bash run-tests.sh`
 - live pipeline:`env -u PYTHONPATH KNOTULUS_ROOT="$PWD" ENABLE_GEMINI=false .venv/Scripts/python.exe src/orchestrator.py`
-- API server:   `uvicorn src.gateway:app --port 8080`
-
-## Open questions
-- GCP project id? (for ENABLE_GEMINI + Cloud Run deploy)
-- Firestore mirror wanted, or file-backed memory enough for submission?
-
-## Re-verified 2026-08-18 (resume session)
-- `bash run-tests.sh` → **4 passed** (confirmed on this machine, Python 3.12.13 venv)
-- Live `python src/orchestrator.py` → full fleet run; NeuroCo (ai) scored 0.7 after
-  memory seed PASS in ai (0.9 base → 0.7). Trace file written. MOCK mode solid.
-- **GAP FOUND:** `Built with Google ADK` criterion not yet runnable — `google-adk`
-  is NOT installed in the venv, and `src/agents/adk_agents.py:main()` is a
-  `CLI().run(root)` placeholder (real ADK runner API differs). Mock/FastAPI paths
-  don't import it, so the ADK deliverable is currently claimed but unverified.
-  → Next: `uv pip install -e ".[adk]"`, fix `main()` to a real ADK runner
-  (`adk run` / `InMemoryRunner`), and add a test that imports the ADK graph.
-- Minor: `registry.json` `endpoint` strings (e.g. `POST /assessment/{id}/respond`)
-  don't match the actual gateway (only `/pitch`, `/decision`, `/memory`, `/traces`,
-  `/seed`, `/registry`, `/health`). Cosmetic; align if a judge inspects registry.
+- API server:   `bash run.sh -m src.gateway`   (then curl :8080/health, /registry, /pitch)
+- ADK graph:    `env -u PYTHONPATH ENABLE_GEMINI=false .venv/Scripts/python.exe src/agents/adk_agents.py`
 
 ## How to resume
 1. `cd C:/Users/admin/Work/Hackathons/knotulus-lite`
-2. Confirm gcloud/ADC done → set ENABLE_GEMINI in `.env`
-3. `bash run-tests.sh` in real mode, then `./deploy.sh`
+2. Mock-mode work needs no creds — just run the commands above.
+3. Real mode / Cloud Run ONLY if user attaches billing + re-approves (scope-locked to knotulus-lite).

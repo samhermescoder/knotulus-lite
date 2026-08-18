@@ -5,6 +5,13 @@ orchestrator runs the async fleet, and discovery/memory/trace endpoints expose
 the registry, investor memory, and reasoning-chain traces (auditability).
 """
 import os
+import sys
+
+# Make `src` importable so bare `import model` / `from orchestrator import ...`
+# resolve whether this file is run as a script, as `src.gateway` (uvicorn/-m),
+# or inside a container. (src/ is a package, so without this the module-style
+# invocations fail with ModuleNotFoundError: model.)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, Body
 from fastapi.responses import JSONResponse, PlainTextResponse

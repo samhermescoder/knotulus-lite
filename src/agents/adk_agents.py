@@ -17,6 +17,11 @@ and is the supported sequential primitive for this release, so we use it here.
 """
 import os
 import asyncio
+import sys
+
+# Ensure `src` is importable when run as a standalone script (python src/agents/adk_agents.py),
+# since this file lives in src/agents/ and imports sibling modules (model, memory) by bare name.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from google.adk import Agent
 from google.adk.agents import SequentialAgent

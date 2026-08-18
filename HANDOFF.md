@@ -4,30 +4,45 @@
 > Read this FIRST before working. Update it at the END of every session.
 
 ## Current state
-- Branch: `main` (NOT yet git-inited — user blocked the init/commit step) | dirty: n/a
-- Last work: Scaffolded project; **PIVOTED docs to the REAL Knotulus** after user
-  clarified the product = investor screening layer + investor memory layer (not the
-  ICM workspace/orchestrator I initially assumed). TRACK-ANALYSIS/SPEC/README now
-  center on the 6-agent screening fleet + Memory Bank. Track still recommended =
-  Fortified Enterprise Fleet.
-- Last verified: registry.json patched & valid (lint ok); folder + md files written.
+- Branch: `master` (pushed) | dirty: 0 | last commit: working build (6-agent fleet + tests)
+- Last work: Built the full codebase. Decisions locked: **Fortified Enterprise
+  Fleet track, solo**. Code runs end-to-end in MOCK mode (no credentials).
+- **VERIFIED today:**
+  - venv + deps install OK (`google-genai`, fastapi, uvicorn, pytest)
+  - `pytest tests/` → **4 passed** (classify, e2e pipeline, memory→ranking, registry)
+  - Live `python src/orchestrator.py` prints real classification + memory-adjusted
+    ranking (prior PASS in `ai` dropped NeuroCo 0.9→0.7) + brief + trace file
+  - `registry.json` (Agent Registry) + `memory/` (investor memory layer) + `traces/`
+    (Observability) all working as plain files
 
-## In flight / next steps
-- [ ] **LOCK THE TRACK** — Fleet recommended (memory layer = Memory Bank + Observability). Confirm vs Taskmaster leaner framing.
-- [ ] `git init` + create `samhermescoder/knotulus-lite` (was blocked; awaiting user go-ahead)
-- [ ] Stand up ADK multi-agent skeleton (Intake, Assessment, Profile, Ranking, Brief, Memory)
-- [ ] Wire Gemini 3.5 Flash (need API key / GCP project + $150 credits claimed)
-- [ ] Cloud Run deploy (scales-to-zero) + Firestore for registry/memory
-- [ ] Build investor memory layer (flagship) — persists decisions, influences ranking
-- [ ] Observability: reasoning traces as plain markdown in `t�races/`
-- [ ] Record demo video + write-up before Sep 1 2026 08:00 GMT+8
+## What is DONE
+- [x] Track analysis + primitive mapping (TRACK-ANALYSIS.md)
+- [x] 6-agent fleet: Intake, Assessment, Profile, Ranking, Brief, Memory
+- [x] Orchestrator (Agent Runtime) + FastAPI gateway (Agent Gateway)
+- [x] Model Armor (PII strip) + Memory Bank + Observability traces
+- [x] Mock/real backend toggle (`ENABLE_GEMINI` env; ADC, no API key)
+- [x] Dockerfile + Cloud Run deploy.sh + ADK agent entrypoint (src/agents/adk_agents.py)
+- [x] Tests passing
 
-## Open questions / decisions needed
-- Solo or team? (affects fleet scope)
-- GCP project + Gemini API access confirmed? $150 credits form submitted?
-- Track lock: Fleet (recommended) or Taskmaster (leaner)?
+## In flight / next steps (YOU + me)
+- [ ] **YOU:** install gcloud (Windows installer) + `gcloud auth application-default login`
+      (ADC — no API key; the key-creation block you hit is expected org policy)
+- [ ] Flip `ENABLE_GEMINI=true` with project set; re-run tests in real mode
+- [ ] `gcloud builds submit` + `gcloud run deploy` (scales-to-zero) — meets GCP-infra requirement
+- [ ] Optional Firestore mirror (`ENABLE_FIRESTORE=true` in memory.py)
+- [ ] Record demo video: pitch → ranked brief + trace; memory changes a future rank
+- [ ] Write-up before **Sep 1 2026 08:00 GMT+8**
+
+## Run commands (venv python — avoid Hermes PYTHONPATH leak)
+- tests:        `bash run-tests.sh`
+- live pipeline:`env -u PYTHONPATH KNOTULUS_ROOT="$PWD" ENABLE_GEMINI=false .venv/Scripts/python.exe src/orchestrator.py`
+- API server:   `uvicorn src.gateway:app --port 8080`
+
+## Open questions
+- GCP project id? (for ENABLE_GEMINI + Cloud Run deploy)
+- Firestore mirror wanted, or file-backed memory enough for submission?
 
 ## How to resume
 1. `cd C:/Users/admin/Work/Hackathons/knotulus-lite`
-2. Confirm track + GCP creds (ask user)
-3. `adk web .` to iterate on the agent skeleton
+2. Confirm gcloud/ADC done → set ENABLE_GEMINI in `.env`
+3. `bash run-tests.sh` in real mode, then `./deploy.sh`

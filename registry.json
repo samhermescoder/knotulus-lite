@@ -1,0 +1,54 @@
+{
+  "registry_version": "1.0",
+  "description": "Knotulus Lite Agent Registry — discoverable, versioned fleet (Fortified Enterprise Fleet primitive).",
+  "agents": [
+    {
+      "id": "intake",
+      "name": "IntakeAgent",
+      "version": "1.0.0",
+      "primitive": "Agent Gateway + Model Armor",
+      "capabilities": ["read_pitch", "extract_company_ask", "classify_fit", "screen_pii"],
+      "endpoint": "POST /pitch"
+    },
+    {
+      "id": "assessment",
+      "name": "AssessmentAgent",
+      "version": "1.0.0",
+      "primitive": "Agent Runtime",
+      "capabilities": ["draft_behavioral_assessment"],
+      "endpoint": "POST /pitch (step 2)"
+    },
+    {
+      "id": "profile",
+      "name": "ProfileAgent",
+      "version": "1.0.0",
+      "primitive": "Agent Runtime",
+      "capabilities": ["build_behavioral_profile"],
+      "endpoint": "POST /assessment/{id}/respond"
+    },
+    {
+      "id": "ranking",
+      "name": "RankingAgent",
+      "version": "1.0.0",
+      "primitive": "Memory Bank (read)",
+      "capabilities": ["rank_shortlist", "personalize_via_memory"],
+      "endpoint": "internal"
+    },
+    {
+      "id": "brief",
+      "name": "BriefAgent",
+      "version": "1.0.0",
+      "primitive": "Agent Observability (write trace)",
+      "capabilities": ["write_pre_meeting_brief", "write_reasoning_trace"],
+      "endpoint": "internal"
+    },
+    {
+      "id": "memory",
+      "name": "MemoryAgent",
+      "version": "1.0.0",
+      "primitive": "Memory Bank (write)",
+      "capabilities": ["persist_decision", "update_investor_memory"],
+      "endpoint": "POST /decision"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 **What:** Simplified, open-source reimplementation of Knotulus's ICM as a Google ADK + Gemini 3.5 Flash agent fleet — built for the All Things Agentic Hackathon (Fortified Enterprise Fleet track).
 **Status:** live
-**Remote:** none (local-only) — create `samhermescoder/knotulus-lite` then set
+**Remote:** `github.com/samhermescoder/knotulus-lite.git` (already set as origin)
 **Registry:** `~/knotulus/registry.json` → `projects.knotulus-lite`
 
 ## How to run (planned)

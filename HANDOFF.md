@@ -42,6 +42,20 @@
 - GCP project id? (for ENABLE_GEMINI + Cloud Run deploy)
 - Firestore mirror wanted, or file-backed memory enough for submission?
 
+## Re-verified 2026-08-18 (resume session)
+- `bash run-tests.sh` → **4 passed** (confirmed on this machine, Python 3.12.13 venv)
+- Live `python src/orchestrator.py` → full fleet run; NeuroCo (ai) scored 0.7 after
+  memory seed PASS in ai (0.9 base → 0.7). Trace file written. MOCK mode solid.
+- **GAP FOUND:** `Built with Google ADK` criterion not yet runnable — `google-adk`
+  is NOT installed in the venv, and `src/agents/adk_agents.py:main()` is a
+  `CLI().run(root)` placeholder (real ADK runner API differs). Mock/FastAPI paths
+  don't import it, so the ADK deliverable is currently claimed but unverified.
+  → Next: `uv pip install -e ".[adk]"`, fix `main()` to a real ADK runner
+  (`adk run` / `InMemoryRunner`), and add a test that imports the ADK graph.
+- Minor: `registry.json` `endpoint` strings (e.g. `POST /assessment/{id}/respond`)
+  don't match the actual gateway (only `/pitch`, `/decision`, `/memory`, `/traces`,
+  `/seed`, `/registry`, `/health`). Cosmetic; align if a judge inspects registry.
+
 ## How to resume
 1. `cd C:/Users/admin/Work/Hackathons/knotulus-lite`
 2. Confirm gcloud/ADC done → set ENABLE_GEMINI in `.env`

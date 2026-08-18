@@ -1,5 +1,6 @@
 google-genai
 fastapi
 uvicorn[standard]
+gunicorn
 python-dotenv
 pytest

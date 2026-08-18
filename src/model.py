@@ -47,7 +47,16 @@ def screen_pii(text: str) -> str:
 def _gem_json(prompt: str, system: str = "") -> dict:
     if genai is None:
         raise RuntimeError("google-genai not installed")
-    client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if api_key:
+        # Gemini Developer API (free API key). NOTE: geo-restricted — unavailable
+        # from HK (FAILED_PRECONDITION), so this is a fallback path only. The active
+        # path for knotulus-lite is Vertex AI + ADC below.
+        client = genai.Client(api_key=api_key)
+    else:
+        # Vertex AI via Application Default Credentials, project-scoped to
+        # GOOGLE_CLOUD_PROJECT (knotulus-lite). Active path for this project.
+        client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
     cfg = types.GenerateContentConfig(
         system_instruction=system, response_mime_type="application/json"
     )

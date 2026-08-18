@@ -15,6 +15,13 @@
   - `registry.json` (Agent Registry) + `memory/` (investor memory layer) + `traces/`
     (Observability) all working as plain files
 
+## Hard constraints (do NOT violate)
+- **GCP scope lock:** the ADC login on this machine (enochfyw@gmail.com) and ALL
+  gcloud/Vertex usage MUST stay inside project `knotulus-lite` ONLY. User explicitly
+  forbade touching any other project with these creds. Always pass `--project knotulus-lite`.
+- **Auth:** Active path = Vertex AI + ADC (real mode). Gemini Developer API key path is
+  geo-blocked from HK (FAILED_PRECONDITION) — unusable here; kept only as fallback code.
+
 ## What is DONE
 - [x] Track analysis + primitive mapping (TRACK-ANALYSIS.md)
 - [x] 6-agent fleet: Intake, Assessment, Profile, Ranking, Brief, Memory
